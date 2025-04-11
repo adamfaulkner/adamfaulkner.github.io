@@ -44,15 +44,23 @@ JSON produces very large messages, which consumes additional network bandwidth. 
 
 #### Poor Performance on the Server Side
 
-At least in my benchmarks, using a Rust server, JSON serialization was slower han most alternatives.
-
+In my benchmarks, using a Rust server, JSON serialization was slower han most alternatives.
   
 ### Protobuf
 
+Protobuf solves many of the above weaknesses in JSON. When compared with the other serialization formats that I tested, Protobuf's main advantage is that it is ubiquitous and well understood, and it has good tooling. For example, there's a simple command line tool for printing out an encoded protobuf message in a human readable format.
+
+Protobuf's main disadvantage in the browser is performance, as it performs worse than Bebop. It also lacks native support for dates, instead relying on an official extension type. This extension type can encode dates with nanosecond precision, but it is rather expensive to encode and decode, so I stuck with expressing dates as milliseconds since the epoch for my tests.
+ 
 ### Bebop
 
+Bebop was the biggest surprise of the formats that I tested. It outperformed everything, it natively supports `Date`s in JavaScript, and it had easy to use tooling. The main weakness that I see with it is that it seems relatively new and not widely adopted, which makes adopting it somewhat more risky.
 
 ### Avro
+
+Avro produced the smallest messages of any format that I tested. However, it did not perform well compared to JSON and Bebop. Its tooling was also slightly inferior -- the library I used, `avsc`, did not feature any support for generating TypeScript types from Avro schemas. There are third party libraries that could fill this gap, however.
+
+Aiyah
 
 ### Flatbuffers
 
