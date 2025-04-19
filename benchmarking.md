@@ -1,15 +1,10 @@
 # Binary Encodings in the Browser in 2025
 
-# WIP:
-
-- Maybe try to use this comment: https://news.ycombinator.com/item?id=33407745
-- This is just outright wrong: https://github.com/protobufjs/protobuf.js#performance
-
 ## TL;DR
 
 There are a number of binary encoding libraries that perform better than JSON deserialization in a browser. This is not as obvious as it might initially seem; it is very easy to get this subtly wrong. 
 
-A couple of libraries ([avsc](https://github.com/mtth/avsc) and [protobuf.js](https://github.com/protobufjs/protobuf.js/)) did not outperform JSON initially, but after making some tweaks performed significantly better than JSON.
+A couple of libraries ([avsc](https://github.com/mtth/avsc) and [protobuf.js](https://github.com/protobufjs/protobuf.js/)) did not outperform JSON initially, but after I made some tweaks, they performed significantly better than JSON.
 
 In this post, I discuss the downsides of using JSON versus a binary encoding, the performance characteristics of several popular binary encoding libararies in JavaScript, and other benchmarks I found online that give misleading results.
 
@@ -17,19 +12,21 @@ In this post, I discuss the downsides of using JSON versus a binary encoding, th
 
 Here were my overall results:
 
-<<< Graph for unverified pojo; picking fastest implementation for each technology >>>
+![Deserialize Duration in Milliseconds](./benchmarking_images/end_to_end_unverified.png)
 
 These results are pretty nuanced, so you should still read the rest of this post :)
 
-## Why Wouldn't We Just Use JSON?
+## Strengths of JSON
 
 JSON has a number of strengths:
 
 * It is directly supported by the JavaScript runtime, no libraries are required.
 * Serialized JSON is somewhat human readable without needing additional tools.
-* In my tests, JSON performed very well on "deserialization" without additional verification or type conversions. For data that fits within the types supported by JSON, it is likely the fastest option on the client side. 
+* Until somewhat recently, JSON outperformed binary encodings in browsers.
 
-However, JSON has many weaknesses when compared to alternative formats:
+## Why Wouldn't We Just Use JSON?
+
+JSON also has many weaknesses when compared to alternative formats:
 
 ### Required String Input
 
@@ -58,7 +55,14 @@ One such library is called "Zod". Zod was extremely slow, so it felt unfair to r
 
 ### Large Serialized Message Size
 
+![Message Sizes in Bytes](./benchmarking_images/sizes.png)
+
 JSON produces very large messages, which consumes additional network bandwidth. This can be mostly mitigated by compressing these messages with Zstd, however, this costs additional CPU time on the server side that other formats do not need to pay to achieve similar results.
+
+![Compressed Message Sizes in Bytes](./benchmarking_images/compressed_sizes.png)
+![Duration of Zstd compression in Milliseconds](./benchmarking_images/compression_duration.png)
+
+(Note that it's reasonable to implement compression in a streamed manner, meaning that this CPU time could be parallelized with IO time. However, this is still an added cost on the server's CPU that is worth considering.)
 
 ### Poor Performance on the Server Side
 
@@ -66,21 +70,23 @@ In my benchmarks, using a Rust server, JSON serialization was slower han most al
 
 ## Benchmarking Subtleties
 
-This was my approach to benchmarking: For each encoding library,
+To benchmark, I did the following for each encoding library:
 
 1. Fetch an encoded message from the server. Include a header from the server describing how much time was needed to process the message on the server side.
 2. Deserialize the encoded message
-3. Construct a "Plain Old JavaScript Object" from it.
+3. Construct a "Plain Old JavaScript Object" from it. This is an obect that resembles a type that I would actually use for programming and internal APIs within a process.
 4. Validate that the plain old JavaScript object actually matches the expected type.
 
-From this, I compute two stats:
+From this, I computed two stats:
 
-1. The "end to end unverified message deserialize time" is the time needed for steps 1, 2, and 3, minus the time spent on the server.
-2. The "end to end verified message deserialize time" is the time needed for all 4 steps above, minus the time spent on the server.
+1. "End to End client side time to unverified message". This is the elapsed time for steps 1-3, minus any time spent on the server.
+2. "End to End client side time to verified message". This is the time needed for all 4 steps above, minus the time spent on the server.
 
 ### Data Set
 
 I used the [NYC Citibike Dataset](https://citibikenyc.com/system-data) for this experiment, as it gave me a usable, real world data set with enough data points to be interesting.
+
+To make things interesting, I picked a set of trips that resulted in about 340MB of serialized JSON.
 
 ### Strings vs Binary Encodings
 
@@ -94,33 +100,27 @@ As mentioned above, some of the libraries I tested were schemaless, while some i
 
 This is why we track both an "unverified" and a "verified" message deserialize time.
 
-<<< insert graph of verified message deserialize times >>>
+![Duration to deserialize and verify a message, in milliseconds](./benchmarking_images/verified.png)
 
 ### Lazy Decoding and Type Differences
 
 Several libraries, like Flatbuffers and Cap'n Proto, implement some form of "lazy decoding", where the deserialized object does not actually do any deserialization until needed. This can significantly improve performance for scenarios where not all parts of a serialized message actually need to be read. In order to get a fair comparison, I materialized "Plain Old JavaScript objects" from deserialized messages.
 
-This also helps get a fair comparison between libraries that support `Date` types and libraries that do not, since we also construct usable `Date` objects during this construction.
-
-### Client and Server Time
-
-This experiment was specifically focused on deserialization performance in a browser, so I deducted the time definitely spent on the server from the overall measurement. 
-
-I think measuring server side performance is also interesting, but existing benchmarks online already do a pretty good job of discussing the tradeoffs of different encodings.
+This also helps get a fair comparison between libraries that support `Date` types and libraries that do not, since the "Plain Old JavaScript object" construction also constructs `Date` objects when necessary.
 
 ### IO Performance
 
 These encodings differ greatly in serialized message size, which will lead to dramatically different results in a real world environment.
 
-<<< insert size graph here >>>
+![Duration to read the message body](./benchmarking_images/body_read_duration.png)
 
-I ran these benchmarks locally, without any kind of network throttling, which I expect minimizes this effect. However, message size should probably be a deciding factor for any scenario where a client is expected to be bandwidth limited.
+I ran these benchmarks locally, without any kind of network throttling, which I expect minimizes the effect of network IO without minimizing the effects of internally copying larger buffers. However, message size should probably be an important factor for any scenario where a client is expected to be bandwidth limited (which I expect is almost any use of a browser).
 
 ## Avro with Avsc
 
 By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill by default, which causes extremely bad deserialization performance. However, the latest version on the `master` branch supports `Uint8Array` directly, and does not suffer these performance problems:
 
-<<< insert graph of old vs new Avro >>> 
+![Duration to deserialize a message, in milliseconds, with old and new avsc versions](./benchmarking_images/avro.png)
 
 I also really like Avro's concept of "logical types". `Avsc` let me use logical types to directly decode `Date` objects from an integer number of milliseconds since the epoch.
 
@@ -128,7 +128,7 @@ I also really like Avro's concept of "logical types". `Avsc` let me use logical 
 
 [Protobuf.js](github.com/protobufjs/protobuf.js) does not perform well by default, as its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the upstream](https://github.com/protobufjs/protobuf.js/pull/2062).
 
-<<< insert graph of old vs new protobuf.js >>>
+![Duration to deserialize a message, in milliseconds, with and without the optimizations I added to protobuf](./benchmarking_images/protobuf.png)
 
 It's also worth noting that I tried alternative Protobuf libraries, including [protobuf-es](https://github.com/bufbuild/protobuf-es/), which did not perform well, and [pbf](https://github.com/mapbox/pbf), which had fantastic performance but did not feature much flexibility or configurability with generated code.
 
@@ -146,7 +146,7 @@ I also tested a few others:
 
 [Flatbuffers](https://github.com/google/flatbuffers) had a nice tooling and developer experience story. Flatbuffers in JavaScript uses a lazy approach to deserialization, so Flatbuffers end up being a good choice for scenarios where the entire message will not be deserialized.
 
-<<< insert graph of scan for single property >>>
+![Duration to scan a message for a single property](./benchmarking_images/scan.png)
 
 Otherwise, when materializing a full blown "fat" JavaScript object, I found Flatbuffer performance to be less than alternatives.
 
