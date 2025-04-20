@@ -21,13 +21,13 @@ I'm writing this post to share my experience and my conclusions.
 
 This graph shows the client side latency for receiving and deserializing a large (340 MB of JSON) message using various different libraries. 
 
-## The Difficulties of Benchmarking This Stuff
+## Challenges of Benchmarking Deserialization in a Browser
 
 It's easy to make mistakes when doing these kinds of benchmarks. Here are some common things I noticed when researching:
 
 ### Using Node.js Rather than a Browser for Benchmarking
 
-The most common mistake that I saw when researching this was to use Node.js rather than a browser for running benchmarks. There are two major differences between browsers and Node:
+The most common mistake that I saw when researching this was that most people benchmarking JavaScript use Node.js rather than a browser. There are two major differences between browsers and Node, which have a big impact on this performance:
 
 1. Node's `Buffer` class performs very differently from `Uint8Array`, as it seems to have faster methods for slicing and converting UTF-8 data to a string.
 2. Node can easily incorporate compiled binary code, and libraries like `msgpackr` and `cbor-x` can use these to accelerate their performance.
@@ -36,7 +36,7 @@ I suspect that using Node here has caused both `avsc` and `protobuf.js` to overs
 
 ### Numeric Heavy Datasets
 
-Other benchmarks (for example, this [JavaScript Serialization Benchmark](https://github.com/Adelost/javascript-serialization-benchmark)) tend towards numeric heavy datasets, which tend to be easier to optimize with binary encodings. This is totally valid if your use case involves a bench of floating point numbers, but in my experience, strings end up being the bulk of my data. 
+Other benchmarks (for example, this [JavaScript Serialization Benchmark](https://github.com/Adelost/javascript-serialization-benchmark)) tend towards numeric heavy datasets, which tend to be easier to optimize with binary encodings. This is great if your use case involves a bunch of floating point numbers, but for my use cases, strings are more important.
 
 ### Accounting for Differences in Input Data Type and Size
 
@@ -74,6 +74,8 @@ In my test, this didn't really change things much. But I think it's an important
 
 Several libraries, like Flatbuffers and Cap'n Proto, implement some form of "lazy decoding", where the deserialized object does not actually do any deserialization until needed. This can significantly improve performance for scenarios where not all parts of a serialized message actually need to be read.
 
+(note: need to adjust this graph to feature end-to-end latency in some way, otherwise it gives the missleading impression that json was fast at this. Maybe just kill the graph since it is hard to explain and undermines the broader point)
+
 This graph shows a benchmark where we deserialized a message, then scanned a single property in the message. You can see that the lazy approach of Flatbuffers gives it a huge advantage here.
 ![Duration to scan a message for a single property](./benchmarking_images/scan.png)
 
@@ -95,7 +97,7 @@ The time needed to materialize a "Plain Old JavaScript object" is included in th
 
 (note: link to commit where this was fixed)
 
-By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill by default, which causes extremely bad deserialization performance. However, the latest version on the `master` branch supports `Uint8Array` directly, and does not suffer these performance problems:
+By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill in browsers, which causes extremely bad deserialization performance. However, the latest version on the `master` branch supports `Uint8Array` directly, and does not suffer these performance problems:
 
 ![Duration to deserialize a message, in milliseconds, with old and new avsc versions](./benchmarking_images/avro.png)
 
@@ -126,11 +128,11 @@ I also tested a few other libraries. I don't think they are a good fit for the b
 
 [Flatbuffers](https://github.com/google/flatbuffers) had a nice tooling and developer experience story. Flatbuffers in JavaScript uses a lazy approach to deserialization, so Flatbuffers end up being a good choice for scenarios where the entire message will not be deserialized.
 
-![Duration to scan a message for a single property](./benchmarking_images/scan.png)
-
 Otherwise, when materializing a full blown "fat" JavaScript object, I found Flatbuffer performance to be less than alternatives.
 
 ### Capn' Proto
+
+(note: link to capnp repo & tickets that show some bitrot evidence)
 
 Capn' Proto seems like it's suffered some bitrot, as it was not possible for me to get it to compile on a recent Node.js version. Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This also used a lazy approach to deserialization, but unlike Flatbuffers, performance was still super bad, to the point where I had to drop it from testing to avoid wasting time during my benchmarks. With so many similar alternatives that feature better performance, I'm not sure it makes sense to use Capn' Proto in 2025.
 
