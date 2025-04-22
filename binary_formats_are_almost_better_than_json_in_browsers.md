@@ -1,3 +1,24 @@
+<style type="text/css">
+
+body {
+margin:40px auto;
+max-width: 800px;
+line-height:1.6;
+font-size:18px;
+padding:0 10px
+}
+
+h1,h2,h3{
+  line-height:1.2
+}
+
+img {
+ width: 800px;
+}
+
+</style>
+ 
+
 # Binary Formats are (Almost) Better Than JSON in Browsers!
 
 ## TL;DR
@@ -9,7 +30,13 @@
 
 ## Introduction
 
-Back in 2023, the company I was working for needed an alternative to JSON for large responses from the server to our Web App. We chose to use MessagePack primarily because it was convenient. At the time, I thought that it would be worth doing a benchmark between various different binary encodings, but to my surprise, I found that all of them were much slower than JSON in browsers. My conclusion was that MessagePack was a reasonable fit for our needs, but that MessagePack, as well as other reasonable alternatives, came with a large performance cost.
+Back in 2023, the company I was working for needed an alternative to JSON for large responses from the server to our Web App. We chose to use MessagePack primarily because it was convenient. During this process, I benchmarked a number of different binary encodings. To my surprise, I found that all of them were much slower than JSON in browsers. My conclusion was that MessagePack was a reasonable fit for our needs, but that MessagePack, as well as other reasonable alternatives, came with a large performance cost. We decided this was acceptable, as our bottlenecks were primarily on the server side.
+
+However, I think a number of recent trends have made deserialization performance more important:
+
+1. Internet speeds have gotten much faster in the past few years, as residential gigabit internet is more broadly rolled out, and as 5G is offering increased performance. This eliminates some of the network IO bottleneck. For business software, this effect is greatly amplified, since many large companies will prioritize providing fast internet to their employees.
+2. Web apps are becoming more complicated; there's increased desire to use richer and larger datasets in web apps. For many web apps, it may be desirable to send large datasets than to build a smart backend, as this may save development time and simplify the architecture of the application.
+3. Users care about responsiveness in web apps. Due to JavaScript's single threaded nature, slow deserialization can block all other interactions with a web app, which will frustrate users.
 
 In the past 3 months, [I've been experimenting with JavaScript binary encoding libraries](https://github.com/adamfaulkner/serialization_bakeoff), and I've found that there are now several options that outperform JSON and otherwise seem really solid.
 
@@ -27,14 +54,16 @@ It's easy to make mistakes when doing these kinds of benchmarks. Here are some c
 
 The most common mistake that I saw when researching this was that most people benchmarking JavaScript use Node.js rather than a browser. There are two major differences between browsers and Node, which have a big impact on this performance:
 
-1. Node's `Buffer` class performs very differently from `Uint8Array`, as it seems to have faster methods for slicing and converting UTF-8 data to a string.
+1. Node.js has a built in class called `Buffer`, which predates when `Uint8Array` was standardized. `Buffer` is still widely used in the Node ecosystem, but since it doesn't exist in the browser, any serialization library that uses it will need to find an alternative. The `Buffer` class performs very differently from `Uint8Array`, as it seems to have faster methods for slicing and converting UTF-8 data to a string.
 2. Node can easily incorporate compiled binary code, and libraries like `msgpackr` and `cbor-x` can use these to accelerate their performance.
 
 I suspect that using Node here has caused both `avsc` and `protobuf.js` to overstate their performance historically.
 
-### Numeric Heavy Datasets
+### Finding Representative Datasets
 
-Other benchmarks (for example, this [JavaScript Serialization Benchmark](https://github.com/Adelost/javascript-serialization-benchmark)) tend towards numeric heavy datasets, which tend to be easier to optimize with binary encodings. This is great if your use case involves a bunch of floating point numbers, but for my use cases, strings are more important.
+Other benchmarks (for example, this [JavaScript Serialization Benchmark](https://github.com/Adelost/javascript-serialization-benchmark)) tend towards datasets with a high proportion of numeric data, which tend to be easier to optimize with binary encodings. This is great if your use case involves a bunch of floating point numbers, but for most use cases I've seen in my career, strings are more important.
+
+When making decisions using benchmarks, it's important that the data involved be representative of what you're trying to do.
 
 ### Accounting for Differences in Input Data Type and Size
 
@@ -60,13 +89,13 @@ You might think that compression could help us here. Indeed, compression almost 
 
 This is very helpful when it comes to addressing network bandwidth concerns, however, the browser still needs to decompress and process more bytes. By measuring the end to end latency for deserializing messages, we capture all of this extra time needed for decompression and processing.
 
-### Schema vs Schemaless
+### Schema vs Schema-less
 
-Some of these encodings have a schema; some are schemaless. Encodings that have a schema implicitly perform some validation of the data. If the developer requires validating decoded data, then we need to capture the additional time needed to do this for schemaless encodings.
+Some of these encodings have a schema; some are schema-less. Encodings that have a schema implicitly perform some validation of the data. If the developer requires validating decoded data, then we need to capture the additional time needed to do this for schema-less encodings.
 
 ![Duration to deserialize and verify a message, in milliseconds](./benchmarking_images/verified.png)
 
-In my test, this didn't really change things much. But I think it's an important callout, since schema encodings provide a lot of useful safety for free.
+In my test, this didn't really change things much. But I think it's an important call-out, since schema encodings provide a lot of useful safety for free.
 
 ### Lazy Decoding and Type Differences
 
@@ -86,7 +115,7 @@ As far as I can tell, the browser features needed to support fast binary encodin
 
 ### Bebop 
 
-[Bebop](https://github.com/betwixt-labs/bebop) is an encoding format very similar to protobuf that was developed in [2020](https://github.com/betwixt-labs/bebop/commit/b123649a5bfc4b5d19c31f42676ec6dd546d7ae2). It seems really great; the tooling works well, and the performance across different supported languages seems good. It also supports `Date` types out of the box. It sounds like it [was originally designed to target browsers](https://web.archive.org/web/20220826230212/https://rainway.com/blog/2020/12/09/bebop-an-efficient-schema-based-binary-serialization-format/) with high performance.
+[Bebop](https://github.com/betwixt-labs/bebop) is an encoding format very similar to protobuf that was developed in [2020](https://github.com/betwixt-labs/bebop/commit/b123649a5bfc4b5d19c31f42676ec6dd546d7ae2). It seems really great; the tooling works well, and the performance across different supported languages seems good. It also supports `Date` types out of the box. [Bebop was originally designed to target browsers with high performance](https://web.archive.org/web/20220826230212/https://rainway.com/blog/2020/12/09/bebop-an-efficient-schema-based-binary-serialization-format/).
 
 The main downside of Bebop is that it seems relatively new and unknown. In fact, the blog post linked above now redirects to "text-os.com", which makes me feel uncomfortable about the future of the company behind this library. I'm not sure Bebop is as safe of a bet as Avro or Protobuf.
 
@@ -100,7 +129,7 @@ With this big improvement in performance, `avsc` becomes the most compelling opt
 
 ### Protobuf (`protobuf.js` library)
 
-In my tests, [Protobuf.js](github.com/protobufjs/protobuf.js) did not perform very well at deserialization by default. The main problem was that its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the upstream](https://github.com/protobufjs/protobuf.js/pull/2062).
+In my tests, [Protobuf.js](github.com/protobufjs/protobuf.js) did not perform very well at deserialization by default. The main problem was that its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the protobuf.js project](https://github.com/protobufjs/protobuf.js/pull/2062).
 
 ![Duration to deserialize a message, in milliseconds, with and without the optimizations I added to protobuf](./benchmarking_images/protobuf.png)
 
@@ -116,15 +145,15 @@ I also tested a few other libraries. I don't think they are a good fit for the b
 
 Otherwise, when materializing a full blown "fat" JavaScript object, I found Flatbuffer performance to be less than alternatives.
 
-### Capn' Proto
+### Cap'n Proto
 
-[Capn' Proto's recommended JavaScript implementation](https://github.com/capnproto/node-capnp) only targets Node.js, as it is simply a wrapper around a C++ module. It also seems like it's suffered some bitrot, as it was not possible for me to get it to compile on a recent Node.js version. Also, it had plenty of caveats around performance being bad in the documentation.
+[Cap'n Proto's recommended JavaScript implementation](https://github.com/capnproto/node-capnp) only targets Node.js, as it is simply a wrapper around a C++ module. It also seems like it's suffered some bitrot, as it was not possible for me to get it to compile on a recent Node.js version. Also, it had plenty of caveats around performance being bad in the documentation.
 
- Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This library also uses a lazy approach to deserialization. Performance was so bad with Capn' Proto that I had to drop it from my investigation to be able to iterate more quickly on the other options.
+ Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This library also uses a lazy approach to deserialization. Performance was so bad with Cap'n Proto that I had to drop it from my investigation to be able to iterate more quickly on the other options.
 
 ![End to end duration to deserialize messages, including capnp](./benchmarking_images/capnp_is_slow.png)
 
-With so many similar alternatives that feature better performance and better browser support, I'm not sure it makes sense to use Capn' Proto in 2025 for targetting browsers.
+With so many similar alternatives that feature better performance and better browser support, I'm not sure it makes sense to use Cap'n Proto in 2025 for targeting browsers.
 
 ### MessagePack and Cbor
 
@@ -136,18 +165,18 @@ So far this post has been focused on performance, but I think it's also worth me
 
 ### Required String Input
 
-`JSON.parse` requires a string as input. This can be problematic with large inputs, as [some JavaScript implementations cap the length of a string at 512MB (nodejs) or 1GB (Chrome)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length).
+`JSON.parse` requires a string as input. This can be problematic with large inputs, as [some JavaScript implementations cap the length of a string at 512MB (Node.js) or 1GB (Chrome)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length).
 
 ### Limited Type Support & Lack of a Schema
 JSON does not support many types that are important for many types of programs. For example, JSON does not have a 64 bit integer type. Some implementations will use a 64 bit floating point type for these values, which will silently mangle values greater than or equal to 2 to the 53rd power. The workaround for this is typically to represent these values using strings, which can be parsed into a BigInt value, or just kept in a string representation if numeric operations will not be performed on these values.
 
-Since JSON is schemaless, decoding a JSON message performs no validation on the shape or type of the decoded data. If we want these sorts of validations, we must validate messages ourselves when we receive them.
+Since JSON is schema-less, decoding a JSON message performs no validation on the shape or type of the decoded data. If we want these sorts of validations, we must validate messages ourselves when we receive them.
 
 Many serialization formats, like Protobuf, perform this sort of validation implicitly when deserializing messages. 
 
-#### A Short Annecdote: Broken Ad Campaigns
+#### A Short Anecdote: Broken Ad Campaigns
 
-At one point in my career, I broke an important client's ad campaign because the company I was at used strings to represent numbers to avoid BigInt issues, and I accidentally added 500 to "500", resulting in a request to fetch the client's 500,500th ad instead of the 1000th ad. This was embarassing and cost the company some amount of money.
+At one point in my career, I broke an important client's ad campaign because the company I was at used strings to represent numbers to avoid BigInt issues, and I accidentally added 500 to "500", resulting in a request to fetch the client's 500,500th ad instead of the 1000th ad. This was embarrassing and cost the company some amount of money.
 
 Nowadays, most people use TypeScript, which can avoid some of these kinds of issues. But JSON does nothing to help us here, and indeed actively harms us. We have to actually use a library like [zod](https://zod.dev/) to get good end to end protections here.
 
