@@ -4,16 +4,14 @@
 
 - Historically, JSON outperformed alternatives in browsers.
 - There are many misleading benchmarks of various libraries online that show misleading results; this mostly comes from running benchmarks in Node.js rather than in the browser.
-- Recent(ish) changes to browsers and libraries has disrupted this situation, now several binary formats outperform JSON on various benchmarks
+- Recent(ish) changes to browsers and libraries has disrupted this situation, now several binary formats outperform JSON at deserialization in the browser.
 - There are lots of reasons beyond performance to avoid using JSON as the encoding between servers and browsers
 
 ## Introduction
 
-Back in 2023, the company I was working for needed an alternative to JSON for large responses from the server to our Web App. We chose to use Msgpack (note: spelling) primarily because it was convenient. At the time, I thought that it would be worth doing a benchmark between various different binary encodings, but to my surprise, I found that all of them were much slower than JSON in browsers. My conclusion was that Msgpack was a reasonable fit for our needs, but that Msgpack, as well as other reasonable alternatives, came with a large performance cost.
+Back in 2023, the company I was working for needed an alternative to JSON for large responses from the server to our Web App. We chose to use MessagePack primarily because it was convenient. At the time, I thought that it would be worth doing a benchmark between various different binary encodings, but to my surprise, I found that all of them were much slower than JSON in browsers. My conclusion was that MessagePack was a reasonable fit for our needs, but that MessagePack, as well as other reasonable alternatives, came with a large performance cost.
 
-In the past 3 months, I've been experimenting with JavaScript binary encoding libraries, and I've found that there are now several options that outperform JSON and otherwise seem really solid.
-
-(note: post links to benchmark)
+In the past 3 months, [I've been experimenting with JavaScript binary encoding libraries](https://github.com/adamfaulkner/serialization_bakeoff), and I've found that there are now several options that outperform JSON and otherwise seem really solid.
 
 I'm writing this post to share my experience and my conclusions. 
 
@@ -56,11 +54,11 @@ I corrected for both of these in my benchmarks by measuring the end-to-end laten
 
 #### Aside: Compression
 
-You might think that compression could save us here. Indeed, compression almost totally wipes out the differences between different encoding libraries:
+You might think that compression could help us here. Indeed, compression almost totally wipes out the differences between different encodings:
 
 ![Compressed Message Sizes in Bytes](./benchmarking_images/compressed_sizes.png)
 
-This is a valid approach to addressing network latency, however, the browser still needs to decompress and process more bytes. I think my end-to-end approach captures this nicely.
+This is very helpful when it comes to addressing network bandwidth concerns, however, the browser still needs to decompress and process more bytes. By measuring the end to end latency for deserializing messages, we capture all of this extra time needed for decompression and processing.
 
 ### Schema vs Schemaless
 
@@ -74,12 +72,7 @@ In my test, this didn't really change things much. But I think it's an important
 
 Several libraries, like Flatbuffers and Cap'n Proto, implement some form of "lazy decoding", where the deserialized object does not actually do any deserialization until needed. This can significantly improve performance for scenarios where not all parts of a serialized message actually need to be read.
 
-(note: need to adjust this graph to feature end-to-end latency in some way, otherwise it gives the missleading impression that json was fast at this. Maybe just kill the graph since it is hard to explain and undermines the broader point)
-
-This graph shows a benchmark where we deserialized a message, then scanned a single property in the message. You can see that the lazy approach of Flatbuffers gives it a huge advantage here.
-![Duration to scan a message for a single property](./benchmarking_images/scan.png)
-
-It would be problematic if we were to only compare Flatbuffer's "deserialize" method against something like `JSON.parse`, since JSON actually does all of the heavy lifting up front.
+It would be problematic if we were to only compare Flatbuffer's "deserialize" method against something like `JSON.parse`, since JSON actually does all of the heavy lifting to allocate real values up front.
 
 Another related problem is that different encodings support different sets of types. For example, Bebop supports `Date`s directly, while something like JSON needs to serialize a number or a string and manually convert it to a date after deserialization.
 
@@ -87,17 +80,19 @@ In order to compare these fairly, I had my benchmark materialize "Plain Old Java
 
 The time needed to materialize a "Plain Old JavaScript object" is included in the end-to-end time that we measure.
 
-## Recent(ish) Developments in Browsers and Libraries
+## Recent(ish) Developments that Make Libraries Faster
 
-(note: look up when uint8array became widely available)
-(note: look up the history of when protobuf.js started supporting uint8array)
-(note: look up when textdecoder became widely availabe)
+As far as I can tell, the browser features needed to support fast binary encodings have been available [since at least early 2020](https://caniuse.com/textencoder), but haven't been widely adopted until more recently. In the past couple of years, there have been a few developments that make binary encodings in the browser much more tenable:
+
+### Bebop 
+
+[Bebop](https://github.com/betwixt-labs/bebop) is an encoding format very similar to protobuf that was developed in [2020](https://github.com/betwixt-labs/bebop/commit/b123649a5bfc4b5d19c31f42676ec6dd546d7ae2). It seems really great; the tooling works well, and the performance across different supported languages seems good. It also supports `Date` types out of the box. It sounds like it [was originally designed to target browsers](https://web.archive.org/web/20220826230212/https://rainway.com/blog/2020/12/09/bebop-an-efficient-schema-based-binary-serialization-format/) with high performance.
+
+The main downside of Bebop is that it seems relatively new and unknown. In fact, the blog post linked above now redirects to "text-os.com", which makes me feel uncomfortable about the future of the company behind this library. I'm not sure Bebop is as safe of a bet as Avro or Protobuf.
 
 ### Avro (`avsc` library)
 
-(note: link to commit where this was fixed)
-
-By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill in browsers, which causes extremely bad deserialization performance. However, the latest version on the `master` branch supports `Uint8Array` directly, and does not suffer these performance problems:
+By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill in browsers, which causes extremely bad deserialization performance. However, [recently](https://github.com/mtth/avsc/commit/c80c670e81b0f7ba020f72db63f081d41dfd3c49) the latest version on the `master` branch began using `Uint8Array` directly, and does not suffer these performance problems:
 
 ![Duration to deserialize a message, in milliseconds, with old and new avsc versions](./benchmarking_images/avro.png)
 
@@ -105,20 +100,11 @@ With this big improvement in performance, `avsc` becomes the most compelling opt
 
 ### Protobuf (`protobuf.js` library)
 
-[Protobuf.js](github.com/protobufjs/protobuf.js) does not perform well by default, as its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the upstream](https://github.com/protobufjs/protobuf.js/pull/2062).
+In my tests, [Protobuf.js](github.com/protobufjs/protobuf.js) did not perform very well at deserialization by default. The main problem was that its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the upstream](https://github.com/protobufjs/protobuf.js/pull/2062).
 
 ![Duration to deserialize a message, in milliseconds, with and without the optimizations I added to protobuf](./benchmarking_images/protobuf.png)
 
-It's also worth noting that I tried alternative Protobuf libraries, including [protobuf-es](https://github.com/bufbuild/protobuf-es/), which did not perform well, and [pbf](https://github.com/mapbox/pbf), which had fantastic performance but did not feature much flexibility or configurability with generated code.
-
-### Bebop 
-
-(note: include some historical context here)
-
-[Bebop](https://github.com/betwixt-labs/bebop) seems really great; the tooling works well, and the performance across different supported languages seems good. It also supports `Date` types out of the box.
-
-The only downside of it is that Bebop seems relatively new and unknown, so I'm not sure it's as safe of a bet as something like Avro or Protobuf.
-
+I also tried alternative Protobuf libraries, including [protobuf-es](https://github.com/bufbuild/protobuf-es/), which did not perform well, and [pbf](https://github.com/mapbox/pbf), which had fantastic performance but did not feature much flexibility or configurability with generated code.
 
 ## Other Libraries
 
@@ -132,13 +118,15 @@ Otherwise, when materializing a full blown "fat" JavaScript object, I found Flat
 
 ### Capn' Proto
 
-(note: link to capnp repo & tickets that show some bitrot evidence)
+[Capn' Proto's recommended JavaScript implementation](https://github.com/capnproto/node-capnp) only targets Node.js, as it is simply a wrapper around a C++ module. It also seems like it's suffered some bitrot, as it was not possible for me to get it to compile on a recent Node.js version. Also, it had plenty of caveats around performance being bad in the documentation.
 
-Capn' Proto seems like it's suffered some bitrot, as it was not possible for me to get it to compile on a recent Node.js version. Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This also used a lazy approach to deserialization, but unlike Flatbuffers, performance was still super bad, to the point where I had to drop it from testing to avoid wasting time during my benchmarks. With so many similar alternatives that feature better performance, I'm not sure it makes sense to use Capn' Proto in 2025.
+ Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This library also uses a lazy approach to deserialization. Performance was so bad with Capn' Proto that I had to drop it from my investigation to be able to iterate more quickly on the other options.
 
-(note: Include actual performance number here or graph to justify this statement)
+![End to end duration to deserialize messages, including capnp](./benchmarking_images/capnp_is_slow.png)
 
-### Msgpack and Cbor
+With so many similar alternatives that feature better performance and better browser support, I'm not sure it makes sense to use Capn' Proto in 2025 for targetting browsers.
+
+### MessagePack and Cbor
 
 I also tested [msgpackr](https://github.com/kriszyp/msgpackr) and [cbor-x](https://github.com/kriszyp/cbor-x). I've seen great performance with both of these libraries in the past, on the server side, but in the browser, they were some of the slowest libraries that I tested.
 
@@ -161,7 +149,7 @@ Many serialization formats, like Protobuf, perform this sort of validation impli
 
 At one point in my career, I broke an important client's ad campaign because the company I was at used strings to represent numbers to avoid BigInt issues, and I accidentally added 500 to "500", resulting in a request to fetch the client's 500,500th ad instead of the 1000th ad. This was embarassing and cost the company some amount of money.
 
-Nowadays, most people use TypeScript, which can avoid some of these kinds of issues. But JSON does nothing to help us here, and indeed actively harms us. We have to actually use a library like [zod](note: link to zod) to get good end to end protections here.
+Nowadays, most people use TypeScript, which can avoid some of these kinds of issues. But JSON does nothing to help us here, and indeed actively harms us. We have to actually use a library like [zod](https://zod.dev/) to get good end to end protections here.
 
 ### Poor Performance on the Server Side
 
