@@ -1,3 +1,6 @@
+<head>
+<title> Binary Formats are Better Than JSON in Browsers! </title>
+
 <style type="text/css">
 
 body {
@@ -17,9 +20,421 @@ img {
 }
 
 </style>
+
+
+<script src="https://code.highcharts.com/highcharts.js"></script>
+
+<script type="text/javascript">
+
+// This is the data loaded from https://github.com/adamfaulkner/serialization_bakeoff
+
+
+const benchmarkData = [{"name":"json","serializeDuration":428,"bodyReadDuration":935.8999999999999,"deserializeDuration":1020.8800000000001,"endToEndMaterializeUnverifiedPojoDuration":3730.22,"scanForIdPropertyDuration":18.199999999999818,"materializeAsUnverifiedPojoDuration":406.3399999999997,"size":340507421,"zstdCompressedSize":49934519,"zstdDuration":789,"materializeAsVerifiedPojoDuration":616.46},{"name":"proto","serializeDuration":378,"bodyReadDuration":205.10000000000036,"deserializeDuration":1672.9799999999996,"endToEndMaterializeUnverifiedPojoDuration":3486.039999999999,"scanForIdPropertyDuration":10.100000000000364,"materializeAsUnverifiedPojoDuration":587.7999999999993,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":476,"materializeAsVerifiedPojoDuration":490.60000000000036},{"name":"updated proto","serializeDuration":370,"bodyReadDuration":355,"deserializeDuration":1237.0400000000009,"endToEndMaterializeUnverifiedPojoDuration":3064.4799999999996,"scanForIdPropertyDuration":10.219999999999345,"materializeAsUnverifiedPojoDuration":443.4400000000005,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":457,"materializeAsVerifiedPojoDuration":415.6999999999989},{"name":"pbf","serializeDuration":286,"bodyReadDuration":327.89999999999964,"deserializeDuration":1480.92,"endToEndMaterializeUnverifiedPojoDuration":3118.3199999999997,"scanForIdPropertyDuration":17.6200000000008,"materializeAsUnverifiedPojoDuration":368.7400000000016,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":452,"materializeAsVerifiedPojoDuration":321.6800000000003},{"name":"msgpack","serializeDuration":270,"bodyReadDuration":508.5,"deserializeDuration":2209.720000000001,"endToEndMaterializeUnverifiedPojoDuration":4323.5999999999985,"scanForIdPropertyDuration":28.020000000000437,"materializeAsUnverifiedPojoDuration":403.52000000000044,"size":275082775,"zstdCompressedSize":44123267,"zstdDuration":532,"materializeAsVerifiedPojoDuration":797.6200000000026},{"name":"cbor","serializeDuration":334,"bodyReadDuration":525.5799999999981,"deserializeDuration":2592.380000000001,"endToEndMaterializeUnverifiedPojoDuration":4558.720000000001,"scanForIdPropertyDuration":28.739999999997963,"materializeAsUnverifiedPojoDuration":438.2800000000025,"size":275511485,"zstdCompressedSize":44153140,"zstdDuration":533,"materializeAsVerifiedPojoDuration":691.0399999999972},{"name":"bebop","serializeDuration":180,"bodyReadDuration":340.3199999999997,"deserializeDuration":1512.3999999999978,"endToEndMaterializeUnverifiedPojoDuration":2621,"scanForIdPropertyDuration":19.279999999998836,"materializeAsUnverifiedPojoDuration":0.020000000000436557,"size":164174471,"zstdCompressedSize":47341400,"zstdDuration":499,"materializeAsVerifiedPojoDuration":9},{"name":"capnp","serializeDuration":247,"bodyReadDuration":405.3199999999997,"deserializeDuration":199.77999999999884,"endToEndMaterializeUnverifiedPojoDuration":37012.119999999995,"scanForIdPropertyDuration":3309.679999999993,"materializeAsUnverifiedPojoDuration":35423.72,"size":223671080,"zstdCompressedSize":53001720,"zstdDuration":613,"materializeAsVerifiedPojoDuration":40814.520000000004},{"name":"flatbuffers","serializeDuration":338,"bodyReadDuration":457.5200000000041,"deserializeDuration":0.08000000000174623,"endToEndMaterializeUnverifiedPojoDuration":5063.62000000001,"scanForIdPropertyDuration":228.2600000000093,"materializeAsUnverifiedPojoDuration":3572.9600000000064,"size":186317000,"zstdCompressedSize":55135144,"zstdDuration":578,"materializeAsVerifiedPojoDuration":3581.320000000007},{"name":"avro","serializeDuration":273,"bodyReadDuration":263.74000000000524,"deserializeDuration":2560.6399999999994,"endToEndMaterializeUnverifiedPojoDuration":3609.5800000000017,"scanForIdPropertyDuration":10.460000000006403,"materializeAsUnverifiedPojoDuration":0,"size":129227481,"zstdCompressedSize":41469145,"zstdDuration":441,"materializeAsVerifiedPojoDuration":0},{"name":"updated avro","serializeDuration":281,"bodyReadDuration":262.3399999999965,"deserializeDuration":1479.4400000000023,"endToEndMaterializeUnverifiedPojoDuration":2517.600000000006,"scanForIdPropertyDuration":10.319999999992433,"materializeAsUnverifiedPojoDuration":0,"size":129227481,"zstdCompressedSize":41469145,"zstdDuration":421,"materializeAsVerifiedPojoDuration":0.020000000004074536}];
+
+
+function pickPerformanceStats(picks) {
+  const result = [];
+  for (const pick of picks) {
+    const found = benchmarkData.find((stat) => stat.name === pick);
+    if (found === undefined) {
+      throw new Error(`No ${pick}`);
+    }
+    result.push(found);
+  }
+  return result;
+}
+
+
+const sizeStats = pickPerformanceStats(["json", "updated proto", "bebop", "updated avro", "msgpack", "cbor", "flatbuffers", "flatbuffers"]);
+
+
+const frontRunnerStats = pickPerformanceStats(["json", "updated proto", "bebop", "updated avro", "msgpack", "cbor", "flatbuffers"])
+
+
+const avroStats = pickPerformanceStats(["avro", "updated avro"])
+
+
+const protobufStats = pickPerformanceStats(["proto", "updated proto"])
+
+const capnpStats = pickPerformanceStats(["json", "updated proto", "capnp"])
+
+
+const colorsMapping = {
+ json: "#FF0000",
+ "updated proto": "#FFFF00",
+ proto: "#CCCCCC",
+ msgpack: "#FF00FF",
+ cbor: "#00FFFF",
+ bebop: "#00FF00",
+ "updated avro": "#0000FF",
+ capnp: "#AAAAAA",
+ flatbuffers: "#CC5500",
+ avro: "#888888"
+};
+
+
+document.addEventListener('DOMContentLoaded', function() {
+ Highcharts.chart('deserializeDuration', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Deserialize Duration'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'Duration',
+            colors: frontRunnerStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: frontRunnerStats.map((s) => [s.name, s.endToEndMaterializeUnverifiedPojoDuration - s.serializeDuration - s.zstdDuration]),
+        },
+    ],
+  });
+ 
+ Highcharts.chart('messageSize', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Message Size'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Bytes (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'size',
+            colors: sizeStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: sizeStats.map((s) => [s.name, s.size]),
+        },
+    ],
+  });
+
+ Highcharts.chart('durationToReadBody', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Duration To Read Message Body'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'duration',
+            colors: frontRunnerStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: frontRunnerStats.map((s) => [s.name, s.bodyReadDuration]),
+        },
+    ],
+  });
+
+ Highcharts.chart('compressedSizes', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Compressed Message Sizes'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Bytes (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'size',
+            colors: frontRunnerStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: frontRunnerStats.map((s) => [s.name, s.zstdCompressedSize]),
+        },
+    ],
+  });
+
+ Highcharts.chart('verified', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Deserialize and Verify Latency'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'duration',
+            colors: frontRunnerStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: frontRunnerStats.map((s) => [s.name,
+
+              s.endToEndMaterializeUnverifiedPojoDuration -
+              s.serializeDuration -
+              s.zstdDuration -
+              s.materializeAsUnverifiedPojoDuration +
+              s.materializeAsVerifiedPojoDuration
+            ]),
+        },
+    ],
+  });
+  
+ Highcharts.chart('avro', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Avro Deserialize Latency'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'duration',
+            colors: avroStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: avroStats.map((s) => [s.name,
+              s.endToEndMaterializeUnverifiedPojoDuration -
+              s.serializeDuration -
+              s.zstdDuration 
+            ]),
+        },
+    ],
+  });
+
+ Highcharts.chart('protobuf', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Protobuf Deserialize Latency'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'duration',
+            colors: protobufStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: protobufStats.map((s) => [s.name,
+              s.endToEndMaterializeUnverifiedPojoDuration -
+              s.serializeDuration -
+              s.zstdDuration 
+            ]),
+        },
+    ],
+  });
+
+
+ Highcharts.chart('capnp', {
+    chart: {
+        type: 'column'
+    },
+    title: {
+        text: 'Deserialize Latency'
+    },
+    xAxis: {
+        type: 'category',
+        labels: {
+            autoRotation: [-45, -90],
+            style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+            }
+        }
+    },
+    yAxis: {
+        min: 0,
+        title: {
+            text: 'Milliseconds (lower is better)'
+        }
+    },
+    plotOptions: {
+        column: {
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+    legend: {
+        enabled: false
+    },
+    series: [
+        {
+            name: 'duration',
+            colors: capnpStats.map((s) => colorsMapping[s.name]),
+            colorByPoint: true,
+            data: capnpStats.map((s) => [s.name,
+              s.endToEndMaterializeUnverifiedPojoDuration -
+              s.serializeDuration -
+              s.zstdDuration 
+            ]),
+        },
+    ],
+  });
+  
+ });
+</script>
  
 
-# Binary Formats are (Almost) Better Than JSON in Browsers!
+# Binary Formats are Better Than JSON in Browsers!
 
 ## TL;DR
 
@@ -43,6 +458,7 @@ In the past 3 months, [I've been experimenting with JavaScript binary encoding l
 I'm writing this post to share my experience and my conclusions. 
 
 ![Deserialize Duration in Milliseconds](./benchmarking_images/end_to_end_unverified.png)
+<div id="deserializeDuration"></div>
 
 This graph shows the client side latency for receiving and deserializing a large (340 MB of JSON) message using various different libraries. 
 
@@ -74,10 +490,12 @@ Firstly, decoding a string from a buffer is expensive. In this comparison, JSON 
 Secondly, JSON messages are much larger than the binary encoded messages. This means that many parts of the browser that touch the message will need to spend more time processing it, beyond just decoding. For example, the networking code inside the browser would need to spend more time copying memory. By limiting the comparison to just deserialization, we don't capture this cost.
 
 ![Message Sizes in Bytes](./benchmarking_images/sizes.png)
+<div id="messageSize"></div>
 
 
 This graph shows how long it took to read the message body from the server, and it's obvious that JSON is actually at a huge disadvantage before deserialization even starts:
 ![Duration to read the message body](./benchmarking_images/body_read_duration.png)
+<div id="durationToReadBody"></div>
 
 I corrected for both of these in my benchmarks by measuring the end-to-end latency from server request to client processing. I then deducted time spent purely on the server side from this end-to-end latency to get the pure client side latency.
 
@@ -86,6 +504,7 @@ I corrected for both of these in my benchmarks by measuring the end-to-end laten
 You might think that compression could help us here. Indeed, compression almost totally wipes out the differences between different encodings:
 
 ![Compressed Message Sizes in Bytes](./benchmarking_images/compressed_sizes.png)
+<div id="compressedSizes"></div>
 
 This is very helpful when it comes to addressing network bandwidth concerns, however, the browser still needs to decompress and process more bytes. By measuring the end to end latency for deserializing messages, we capture all of this extra time needed for decompression and processing.
 
@@ -94,6 +513,7 @@ This is very helpful when it comes to addressing network bandwidth concerns, how
 Some of these encodings have a schema; some are schema-less. Encodings that have a schema implicitly perform some validation of the data. If the developer requires validating decoded data, then we need to capture the additional time needed to do this for schema-less encodings.
 
 ![Duration to deserialize and verify a message, in milliseconds](./benchmarking_images/verified.png)
+<div id="verified"></div>
 
 In my test, this didn't really change things much. But I think it's an important call-out, since schema encodings provide a lot of useful safety for free.
 
@@ -124,6 +544,7 @@ The main downside of Bebop is that it seems relatively new and unknown. In fact,
 By default, as of April of 2025, the released version of [avsc](https://github.com/mtth/avsc) uses a very slow `Buffer` polyfill in browsers, which causes extremely bad deserialization performance. However, [recently](https://github.com/mtth/avsc/commit/c80c670e81b0f7ba020f72db63f081d41dfd3c49) the latest version on the `master` branch began using `Uint8Array` directly, and does not suffer these performance problems:
 
 ![Duration to deserialize a message, in milliseconds, with old and new avsc versions](./benchmarking_images/avro.png)
+<div id="avro"></div>
 
 With this big improvement in performance, `avsc` becomes the most compelling option for pure performance that I tested.
 
@@ -132,6 +553,7 @@ With this big improvement in performance, `avsc` becomes the most compelling opt
 In my tests, [Protobuf.js](github.com/protobufjs/protobuf.js) did not perform very well at deserialization by default. The main problem was that its algorithm for decoding strings is not as efficient as other options. Fortunately, this was easily fixed, and I've submitted [a pull request to the protobuf.js project](https://github.com/protobufjs/protobuf.js/pull/2062).
 
 ![Duration to deserialize a message, in milliseconds, with and without the optimizations I added to protobuf](./benchmarking_images/protobuf.png)
+<div id="protobuf"></div>
 
 I also tried alternative Protobuf libraries, including [protobuf-es](https://github.com/bufbuild/protobuf-es/), which did not perform well, and [pbf](https://github.com/mapbox/pbf), which had fantastic performance but did not feature much flexibility or configurability with generated code.
 
@@ -152,6 +574,7 @@ Otherwise, when materializing a full blown "fat" JavaScript object, I found Flat
  Instead, I opted to test [capnp-es](https://github.com/unjs/capnp-es). This library also uses a lazy approach to deserialization. Performance was so bad with Cap'n Proto that I had to drop it from my investigation to be able to iterate more quickly on the other options.
 
 ![End to end duration to deserialize messages, including capnp](./benchmarking_images/capnp_is_slow.png)
+<div id="capnp"></div>
 
 With so many similar alternatives that feature better performance and better browser support, I'm not sure it makes sense to use Cap'n Proto in 2025 for targeting browsers.
 
