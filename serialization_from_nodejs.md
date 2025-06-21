@@ -1,6 +1,35 @@
 <head>
     <title> Serialization From NodeJS </title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style type="text/css">
+
+body {
+margin:40px auto;
+max-width: 800px;
+line-height:1.6;
+font-size:18px;
+padding:0 10px
+}
+
+h1,h2,h3{
+  line-height:1.2
+}
+
+img {
+ width: 800px;
+}
+
+.chart-container {
+    position: relative;
+    width: 600px;
+    height: 300px;
+    margin: 20px auto;
+}
+
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
     <script type="text/javascript">
     // Final Serialize Duration
     // Serializer	Avg (ms)
@@ -34,7 +63,10 @@
       {"name":"avro","rustSerializeDuration":321, "finalSerializeDuration": 586.67, "unoptimizedSerializeDuration": 5443.33 },
     ];
     function createFinalResultsChart() {
-      const ctx = document.getElementById('finalResultsChart').getContext('2d');
+      const canvas = document.getElementById('finalResultsChart');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
       const sortedStats = [...serializationStats].sort((a, b) => a.finalSerializeDuration - b.finalSerializeDuration);
       new Chart(ctx, {
         type: 'bar',
@@ -49,7 +81,8 @@
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -69,7 +102,10 @@
       });
     }
     function createPreOptimizationChart() {
-      const ctx = document.getElementById('preOptimizationChart').getContext('2d');
+      const canvas = document.getElementById('preOptimizationChart');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
       const formats = ['msgpack', 'cbor', 'bebop', 'avro'];
       const filteredStats = serializationStats.filter(stat => formats.includes(stat.name));
       new Chart(ctx, {
@@ -91,7 +127,8 @@
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -111,7 +148,10 @@
       });
     }
     function createBebopChart() {
-      const ctx = document.getElementById('bebopChart').getContext('2d');
+      const canvas = document.getElementById('bebopChart');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
       const bebopStat = serializationStats.find(stat => stat.name === 'bebop');
       const jsonStat = serializationStats.find(stat => stat.name === 'json');
       new Chart(ctx, {
@@ -135,7 +175,8 @@
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -155,7 +196,10 @@
       });
     }
     function createProtobufChart() {
-      const ctx = document.getElementById('protobufChart').getContext('2d');
+      const canvas = document.getElementById('protobufChart');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
       const protobufStat = serializationStats.find(stat => stat.name === 'protobuf.js');
       const pbfStat = serializationStats.find(stat => stat.name === 'pbf');
       new Chart(ctx, {
@@ -177,7 +221,8 @@
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -197,7 +242,10 @@
       });
     }
     function createRustChart() {
-      const ctx = document.getElementById('rustChart').getContext('2d');
+      const canvas = document.getElementById('rustChart');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
       const sortedStats = [...serializationStats].sort((a, b) => a.rustSerializeDuration - b.rustSerializeDuration);
       new Chart(ctx, {
         type: 'bar',
@@ -218,7 +266,8 @@
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
+          maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
@@ -265,7 +314,9 @@ NYC citibike dataset as my data for benchmarking.
 Here are the final results, comparing the formats that I tested:
 
 <div id="finalResults">
-<canvas id="finalResultsChart" width="400" height="200"></canvas>
+<div class="chart-container">
+<canvas id="finalResultsChart"></canvas>
+</div>
 </div>
 
 ## Why is this interesting?
@@ -288,7 +339,9 @@ it is helpful.
 
 At the beginning of these tests, the results were radically different:
 <div id="preOptimizationComparisons">
-<canvas id="preOptimizationChart" width="400" height="200"></canvas>
+<div class="chart-container">
+<canvas id="preOptimizationChart"></canvas>
+</div>
 </div>
 
 There were two big changes that I made to several of these serializers which were responsible for this speedup:
@@ -388,7 +441,9 @@ attempt which grows the buffer dynamically.
 ## What's up with Bebop?
 
 <div id="bebopPreOptimizeVsOptimizeVsJSON">
-<canvas id="bebopChart" width="400" height="200"></canvas>
+<div class="chart-container">
+<canvas id="bebopChart"></canvas>
+</div>
 </div>
 
 While I was able to speed up Bebop considerably, it was still much slower than
@@ -422,7 +477,9 @@ an order of magnitude faster. It was also around 88% smaller than Protobuf.js,
 by lines of code. The code it generated was very easy to read and understand.
 
 <div id="protobufVsPbf">
-<canvas id="protobufChart" width="400" height="200"></canvas>
+<div class="chart-container">
+<canvas id="protobufChart"></canvas>
+</div>
 </div>
 
 To make some broad generalizations, I've seen this kind of pattern with a lot of
@@ -436,5 +493,16 @@ is not surprising at all, but I think it bears remembering. If you have a
 choice, don't use JavaScript on the server.
 
 <div id="rustVsOptimized">
-<canvas id="rustChart" width="400" height="200"></canvas>
+<div class="chart-container">
+<canvas id="rustChart"></canvas>
 </div>
+</div>
+
+Honestly, writing high performance JavaScript is subtle and requires lots of
+skill, I think it's probably harder than just using a better language.
+
+## Conclusion
+* There are a number of serialization libraries that outperform JSON in NodeJS.
+* It's important to avoid generating extraneous garbage when doing these kinds of benchmarks.
+* It's important to provide an appropriately sized buffer when performing serialization.
+* If you care about any of this stuff, just use a better programming language.
