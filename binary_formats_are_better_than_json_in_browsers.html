@@ -28,7 +28,7 @@ img {
 
 // This is the data loaded from https://github.com/adamfaulkner/serialization_bakeoff
 
-const benchmarkData = 
+const benchmarkData =
 [{"name":"json","endToEndMaterializeUnverifiedPojoDuration":4754.9,"deserializeDuration":1178.5680000000007,"bodyReadDuration":1543.5920000000012,"serializeDuration":455.9,"scanForIdPropertyDuration":20.473999999999798,"materializeAsUnverifiedPojoDuration":553.7039999999993,"size":340507421,"zstdCompressedSize":49934519,"zstdDuration":845.6,"materializeAsVerifiedPojoDuration":796.7939999999979},{"name":"proto","endToEndMaterializeUnverifiedPojoDuration":3829.5599999999986,"deserializeDuration":1818.5500000000006,"bodyReadDuration":390.31999999999897,"serializeDuration":283.3,"scanForIdPropertyDuration":10.34800000000032,"materializeAsUnverifiedPojoDuration":642.5419999999998,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":492.2,"materializeAsVerifiedPojoDuration":501.0120000000032},{"name":"updated proto","endToEndMaterializeUnverifiedPojoDuration":3439.474000000002,"deserializeDuration":1455.7920000000026,"bodyReadDuration":382.12600000000384,"serializeDuration":285.6,"scanForIdPropertyDuration":9.52800000000425,"materializeAsUnverifiedPojoDuration":638.1940000000031,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":494,"materializeAsVerifiedPojoDuration":524.4259999999965},{"name":"pbf","endToEndMaterializeUnverifiedPojoDuration":3389.4140000000043,"deserializeDuration":1576.5660000000003,"bodyReadDuration":441.4059999999998,"serializeDuration":298.8,"scanForIdPropertyDuration":18.84999999999127,"materializeAsUnverifiedPojoDuration":405.44400000000024,"size":136972707,"zstdCompressedSize":44935390,"zstdDuration":503.8,"materializeAsVerifiedPojoDuration":342.0499999999971},{"name":"msgpack","endToEndMaterializeUnverifiedPojoDuration":4785.529999999999,"deserializeDuration":2406.5960000000023,"bodyReadDuration":683.351999999996,"serializeDuration":290.1,"scanForIdPropertyDuration":33.27599999999511,"materializeAsUnverifiedPojoDuration":641.1160000000003,"size":275082775,"zstdCompressedSize":44123267,"zstdDuration":595.8,"materializeAsVerifiedPojoDuration":890.9400000000053},{"name":"cbor","endToEndMaterializeUnverifiedPojoDuration":4978.405999999997,"deserializeDuration":2557.9020000000137,"bodyReadDuration":684.5460000000021,"serializeDuration":344.4,"scanForIdPropertyDuration":30.539999999996507,"materializeAsUnverifiedPojoDuration":648.0280000000027,"size":275511485,"zstdCompressedSize":44153140,"zstdDuration":587.1,"materializeAsVerifiedPojoDuration":806.8940000000118},{"name":"bebop","endToEndMaterializeUnverifiedPojoDuration":2939.0140000000015,"deserializeDuration":1616.7299999999989,"bodyReadDuration":455.4539999999979,"serializeDuration":186.3,"scanForIdPropertyDuration":17.135999999998603,"materializeAsUnverifiedPojoDuration":0,"size":164174471,"zstdCompressedSize":47341400,"zstdDuration":566,"materializeAsVerifiedPojoDuration":8.885999999998603},{"name":"flatbuffers","endToEndMaterializeUnverifiedPojoDuration":5378.229999999993,"deserializeDuration":0.06399999999557622,"bodyReadDuration":470.1159999999974,"serializeDuration":330.4,"scanForIdPropertyDuration":271.37600000000674,"materializeAsUnverifiedPojoDuration":3804.5739999999932,"size":186317000,"zstdCompressedSize":55135144,"zstdDuration":640.8,"materializeAsVerifiedPojoDuration":3798.344000000006},{"name":"avro","endToEndMaterializeUnverifiedPojoDuration":3641.855999999988,"deserializeDuration":2575.097999999998,"bodyReadDuration":273.13200000000654,"serializeDuration":279.4,"scanForIdPropertyDuration":10.759999999991852,"materializeAsUnverifiedPojoDuration":0.003999999992083758,"size":129227481,"zstdCompressedSize":41469145,"zstdDuration":436.8,"materializeAsVerifiedPojoDuration":0},{"name":"updated avro","endToEndMaterializeUnverifiedPojoDuration":2762.4179999999933,"deserializeDuration":1501.0039999999979,"bodyReadDuration":355.04000000000235,"serializeDuration":288.4,"scanForIdPropertyDuration":10.537999999994645,"materializeAsUnverifiedPojoDuration":0.002000000001862645,"size":129227481,"zstdCompressedSize":41469145,"zstdDuration":476.7,"materializeAsVerifiedPojoDuration":0.001999999996041879},{"name":"capnp","serializeDuration":247,"bodyReadDuration":405.3199999999997,"deserializeDuration":199.77999999999884,"endToEndMaterializeUnverifiedPojoDuration":37012.119999999995,"scanForIdPropertyDuration":3309.679999999993,"materializeAsUnverifiedPojoDuration":35423.72,"size":223671080,"zstdCompressedSize":53001720,"zstdDuration":613,"materializeAsVerifiedPojoDuration":40814.520000000004}];
 
 function pickPerformanceStats(picks) {
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
     ],
   });
- 
+
  Highcharts.chart('messageSize', {
     chart: {
         type: 'column'
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
     ],
   });
-  
+
  Highcharts.chart('avro', {
     chart: {
         type: 'column'
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: avroStats.map((s) => [s.name,
               s.endToEndMaterializeUnverifiedPojoDuration -
               s.serializeDuration -
-              s.zstdDuration 
+              s.zstdDuration
             ]),
         },
     ],
@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: protobufStats.map((s) => [s.name,
               s.endToEndMaterializeUnverifiedPojoDuration -
               s.serializeDuration -
-              s.zstdDuration 
+              s.zstdDuration
             ]),
         },
     ],
@@ -446,17 +446,20 @@ document.addEventListener('DOMContentLoaded', function() {
             data: capnpStats.map((s) => [s.name,
               s.endToEndMaterializeUnverifiedPojoDuration -
               s.serializeDuration -
-              s.zstdDuration 
+              s.zstdDuration
             ]),
         },
     ],
   });
-  
+
  });
 </script>
+
+
 <h1>Binary Formats are Better Than JSON in Browsers!</h1>
+<p>2025-04-23</p>
 <h2>TL;DR</h2>
-<p>JSON used to be faster than alternatives in browsers, but that&#39;s not the case anymore. For performance sensitive web apps, it is worth considering Avro, Protobuf, or Bebop. </p>
+<p>JSON used to be faster than alternatives in browsers, but that&#39;s not the case anymore. For performance sensitive web apps, it is worth considering Avro, Protobuf, or Bebop.</p>
 <h2>Introduction</h2>
 <p>Back in 2023, the company I was working for needed an alternative to JSON for large responses from the server to our Web App. We chose to use MessagePack primarily because it was convenient. During this process, I benchmarked a number of different binary encodings. To my surprise, I found that all of them were much slower than JSON in browsers. My conclusion was that MessagePack was a reasonable fit for our needs, but that MessagePack, as well as other reasonable alternatives, came with a large performance cost. We decided this was acceptable, as our bottlenecks were primarily on the server side.</p>
 <p>However, I think a number of recent trends have made deserialization performance more important:</p>
@@ -466,10 +469,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <li>Users care about responsiveness in web apps. Due to JavaScript&#39;s single threaded nature, slow deserialization can block all other interactions with a web app, which will frustrate users.</li>
 </ol>
 <p>In the past 3 months, <a href="https://github.com/adamfaulkner/serialization_bakeoff">I&#39;ve been experimenting with JavaScript binary encoding libraries</a>, and I&#39;ve found that there are now several options that outperform JSON and otherwise seem really solid.</p>
-<p>I&#39;m writing this post to share my experience and my conclusions. </p>
+<p>I&#39;m writing this post to share my experience and my conclusions.</p>
 <div id="deserializeDuration"></div>
 
-<p>This graph shows the client side latency for receiving and deserializing a large (340 MB of JSON) message using various different libraries. </p>
+<p>This graph shows the client side latency for receiving and deserializing a large (340 MB of JSON) message using various different libraries.</p>
 <h2>Challenges of Benchmarking Deserialization in a Browser</h2>
 <p>It&#39;s easy to make mistakes when doing these kinds of benchmarks. Here are some common things I noticed when researching:</p>
 <h3>Using Node.js Rather than a Browser for Benchmarking</h3>
@@ -546,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <h3>Limited Type Support &amp; Lack of a Schema</h3>
 <p>JSON does not support many types that are important for many types of programs. For example, JSON does not have a 64 bit integer type. Some implementations will use a 64 bit floating point type for these values, which will silently mangle values greater than or equal to 2 to the 53rd power. The workaround for this is typically to represent these values using strings, which can be parsed into a BigInt value, or just kept in a string representation if numeric operations will not be performed on these values.</p>
 <p>Since JSON is schema-less, decoding a JSON message performs no validation on the shape or type of the decoded data. If we want these sorts of validations, we must validate messages ourselves when we receive them.</p>
-<p>Many serialization formats, like Protobuf, perform this sort of validation implicitly when deserializing messages. </p>
+<p>Many serialization formats, like Protobuf, perform this sort of validation implicitly when deserializing messages.</p>
 <h4>A Short Anecdote: Broken Ad Campaigns</h4>
 <p>At one point in my career, I broke an important client&#39;s ad campaign because the company I was at used strings to represent numbers to avoid BigInt issues, and I accidentally added 500 to &quot;500&quot;, resulting in a request to fetch the client&#39;s 500,500th ad instead of the 1000th ad. This was embarrassing and cost the company some amount of money.</p>
 <p>Nowadays, most people use TypeScript, which can avoid some of these kinds of issues. But JSON does nothing to help us here, and indeed actively harms us. We have to actually use a library like <a href="https://zod.dev/">zod</a> to get good end to end protections here.</p>

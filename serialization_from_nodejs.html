@@ -298,15 +298,21 @@ img {
 
 
 <h1>Serialization from NodeJS</h1>
+<p>2025-06-22</p>
 <h2>Introduction</h2>
+<p>In this post, I&#39;ll show that several binary formats outperform JSON at
+serialization in NodeJS. However, Node&#39;s runtime and library ecosystem introduce
+complexity that must be dealt with to achieve this performance.</p>
 <p>This is intended as a companion to <a href="binary_formats_are_better_than_json_in_browsers.html">Binary Formats are Better than JSON in
 Browsers</a>. In that post, I
 explored how several binary formats outperfom JSON in browsers. In this post,
-I&#39;ll be focused on serialization in backend services written in NodeJS.</p>
-<p>I&#39;ll show that several binary formats outperform JSON, though things are subtle
-and more annoying. For all of these tests, the code is available
+I&#39;ll be focused on serialization performance in backend services written in
+NodeJS.</p>
+<p>For all of these tests, the code is available
 <a href="https://github.com/adamfaulkner/serialization_from_nodejs">here</a>. I used the
-NYC citibike dataset as my data for benchmarking.</p>
+<a href="https://citibikenyc.com/system-data">NYC citibike dataset</a> as my data for
+benchmarking. In my benchmark, I serialize a list of 100,000 trips in different
+serialization formats.</p>
 <p>Here are the final results, comparing the formats that I tested:</p>
 <div id="finalResults">
 <div class="chart-container">
@@ -316,18 +322,20 @@ NYC citibike dataset as my data for benchmarking.</p>
 
 <h2>Why is this interesting?</h2>
 <p>Naively, one would assume that binary formats are always better than JSON, since
-they produce a smaller output, and &quot;less bytes = faster&quot;. However, JSON is
-pretty tightly integrated with v8 and can make use of optimizations that are not
-available to other formats.</p>
+they produce a smaller output, and fewer bytes ought to be faster. However, JSON
+serialization is implemented in C++ as part of v8, and can make use of
+optimizations that are not available to other libraries. A library like
+<a href="https://github.com/mtth/avsc">avsc</a> is implemented in pure JavaScript, and so
+has fewer optimization opportunities.</p>
 <p>In a past job, I wrote a doc about how avro didn&#39;t perform as well as JSON for
 serialization, so we shouldn&#39;t use it. This seems to no longer be the case, so I
-figured I&#39;d write this follow up.</p>
+wanted to write this follow up.</p>
 <p>I also found that it was important to optimize a couple of things in the
 serialization benchmark to get a good result. Without optimization, some of
 these serializers were 10x slower. I wanted to document this somewhere, in case
 it is helpful.</p>
 <h2>Optimizations</h2>
-<p>At the beginning of these tests, the results were radically different:</p>
+<p>At the beginning of these tests, the results were radically different from the eventual optimized versions:</p>
 <div id="preOptimizationComparisons">
 <div class="chart-container">
 <canvas id="preOptimizationChart"></canvas>
@@ -339,13 +347,16 @@ it is helpful.</p>
 <li>Create less garbage when setting up the object to serialize.</li>
 <li>Pre-allocate appropriately sized buffers.</li>
 </ul>
-<h2>Profiling and Allocation Sampling:</h2>
+<h3>Profiling and Allocation Sampling:</h3>
 <p>When I started CPU profiling this benchmark, it became very clear that we were
 spending almost all of our time inside the garbage collector. I quickly switched
 to looking at allocation sampling. Node makes this very easy using the
 <a href="https://nodejs.org/api/inspector.html">inspector</a> module -- third party
 libraries are no longer required for doing scoped profiling!</p>
-<h2>Creating the input to the serializer without creating lots of garbage.</h2>
+<p>Allocation sampling clearly showed that most of this garbage was created in the
+two aforementioned places: when setting up the object to serialize, and when
+growing buffers.</p>
+<h3>Creating the input to the serializer without creating lots of garbage.</h3>
 <p>The first thing I noticed when optimizing this code was that we were creating
 most of our garbage when setting up the object for serialization. This is code
 that looked like this:</p>
@@ -385,7 +396,7 @@ fields, like <code>startTime</code> became <code>startTimeMs</code>.</p>
 <p>This mostly eliminated the garbage created by these objects, which more than
 doubled the speed of the avro benchmark. Other serializers had a noticeable, but
 less dramatic speedup.</p>
-<h2>Using an appropriately sized buffer.</h2>
+<h3>Using an appropriately sized buffer.</h3>
 <p>The second big thing I noticed was that many serializers allocated a lot of
 buffers. Most of the libraries that I looked at closely implemented dynamically
 growing buffers by allocating a new buffer double the size of the original
@@ -395,21 +406,23 @@ to other languages.</p>
 <p>Some of these libraries permitted us to provide a buffer for the serializer to
 use instead, so I could simply allocate a large enough buffer up front, and
 avoid this cost.</p>
-<p>Honestly, all of these libraries ought to just compute the length of the
-serialized message first, then allocate an appropriately sized buffer.</p>
-<p><a href="https://github.com/mtth/avsc/tree/master">Avsc</a> essentially does this, but in a
-goofy way. Its underlying <a href="https://github.com/mtth/avsc/blob/91d653f72906102448a059cb81692177bb678f52/lib/utils.js#L518-L525"><code>Tap</code>
+<p>It seems to me that all of these libraries ought to just compute the length of
+the serialized message first, then allocate an appropriately sized buffer,
+rather than trying to dynamically grow buffers.</p>
+<p><a href="https://github.com/mtth/avsc/tree/master">Avsc</a> essentially does this, but in
+an inefficient way. Its underlying <a href="https://github.com/mtth/avsc/blob/91d653f72906102448a059cb81692177bb678f52/lib/utils.js#L518-L525"><code>Tap</code>
 implementation</a>
 will silently overflow when presented with an object that is too big to
 serialize. It will then explicitly allocate an appropriately sized buffer, and
-repeat the serialization operation into this buffer. It would be faster to have
-an explicit way to determine the size of a serialized message.</p>
+repeat the serialization operation into this buffer. It would probably be faster
+to have an explicit way to determine the size of a serialized message.</p>
 <p>Other libraries, like <a href="https://github.com/kriszyp/msgpackr">Msgpackr</a> do not
 have a way to provide an appropriately sized buffer, but they do permit us to
 reuse a buffer previously returned by a prior call to msgpacker. By using this
 method and repeating the test a number of times, we can amortize out the initial
 attempt which grows the buffer dynamically.</p>
-<h2>What&#39;s up with Bebop?</h2>
+<h2>Serializer Specific Observations</h2>
+<h3>Bebop</h3>
 <div id="bebopPreOptimizeVsOptimizeVsJSON">
 <div class="chart-container">
 <canvas id="bebopChart"></canvas>
@@ -419,21 +432,18 @@ attempt which grows the buffer dynamically.</p>
 <p>While I was able to speed up Bebop considerably, it was still much slower than
 JSON. It didn&#39;t have a reasonable way to provide a pre-allocated buffer to the
 serializer. I suspect this would help considerably.</p>
-<h2>What&#39;s up with Protobuf.js?</h2>
-<p><a href="https://github.com/protobufjs/protobuf.js">Protobuf.js</a> does not have good APIs
-for implementing either optimization. It requires creating explicit, library
+<h3>Protobuf.js</h3>
+<p><a href="https://github.com/protobufjs/protobuf.js">Protobuf.js</a> does not have a good API
+for avoiding garbage during setup. It requires creating explicit, library
 specific, <code>Message</code> objects, which we can&#39;t easily fake to avoid creating
-garbage. It also doesn&#39;t have a good way to provide a pre-allocated buffer.</p>
-<p>From what I can tell from reading the Protobuf.js writer code, buffer
-pre-allocation shouldn&#39;t matter as much as it does for other libraries, because
-Protobuf.js accumulates a linked list of items to serialize, <a href="https://github.com/protobufjs/protobuf.js/blob/f42297b29d15c8e0382744a83f5147a1aa978f42/src/writer.js#L448-L459">then allocates an
-appropriately sized
-buffer</a>.</p>
-<p>Garbage collection accounts for a 85% of the time spent serializing protobuf
-messages with Protobuf.js, so I&#39;d guess that this fancy linked list stuff
-probably costs more than it saves.</p>
-<h2>Rant about Protobuf.js and the JavaScript ecosystem in general.</h2>
-<p>This business with Protobuf.js is kinda sad. There&#39;s nothing in the Protobuf
+garbage.</p>
+<p>Protobuf.js <a href="https://github.com/protobufjs/protobuf.js/blob/f42297b29d15c8e0382744a83f5147a1aa978f42/src/writer.js#L448-L459">avoids the issues with dynamically growing buffers out of the
+box</a>.
+However, this appears to be at the cost of a much more complicated
+implementation. Garbage collection still accounts for a 85% of the time spent
+serializing protobuf messages with Protobuf.js, so I&#39;d guess that this optimized
+implementation costs more than it saves.</p>
+<p>This situation with Protobuf.js is unfortunate. There&#39;s nothing in the Protobuf
 format that requires the serializer to be this slow.</p>
 <p>I tried another library called <a href="https://github.com/mapbox/pbf">Pbf</a>, and it was
 an order of magnitude faster. It was also around 88% smaller than Protobuf.js,
@@ -444,10 +454,10 @@ by lines of code. The code it generated was very easy to read and understand.</p
 </div>
 </div>
 
-<p>To make some broad generalizations, I&#39;ve seen this kind of pattern with a lot of
-JavaScript libraries. They don&#39;t really care much about performance and end up
-being very bloated, with very little benefit to the end-user.</p>
-<h2>Use a different language</h2>
+<p>To make a broad generalization, I&#39;ve seen this kind of pattern with many
+JavaScript libraries. They are not designed with performance in mind, and end up
+having poor performance characteristics.</p>
+<h2>Use a Different Programming Language</h2>
 <p>Compared with minimally optimized Rust code, JavaScript is just very slow. This
 is not surprising at all, but I think it bears remembering. If you have a
 choice, don&#39;t use JavaScript on the server.</p>
@@ -457,12 +467,16 @@ choice, don&#39;t use JavaScript on the server.</p>
 </div>
 </div>
 
-<p>Honestly, writing high performance JavaScript is subtle and requires lots of
-skill, I think it&#39;s probably harder than just using a better language.</p>
+<p>Note that all of this high performance JavaScript is rather subtle, and requires
+using a profiler and carefully weighing tradeoffs. I think it&#39;s probably harder
+to write this kind of JavaScript than it is to just use a compiled language with
+better performance characteristics, like Rust. Obviously, there are situations
+where NodeJS is a requirement, but it&#39;d be best to just not use this for
+anything that needs to perform well.</p>
 <h2>Conclusion</h2>
 <ul>
 <li>There are a number of serialization libraries that outperform JSON in NodeJS.</li>
 <li>It&#39;s important to avoid generating extraneous garbage when doing these kinds of benchmarks.</li>
 <li>It&#39;s important to provide an appropriately sized buffer when performing serialization.</li>
-<li>If you care about any of this stuff, just use a better programming language.</li>
+<li>If you care about serialization performance, consider using a different programming language with better tradeoffs.</li>
 </ul>
